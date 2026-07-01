@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow the Manus sandbox proxy origin in development
+  allowedDevOrigins: ["3000-i420pf5e87iuw4m58cebe-4afa219b.us2.manus.computer"],
+
   // Image optimization configuration
   images: {
     remotePatterns: [

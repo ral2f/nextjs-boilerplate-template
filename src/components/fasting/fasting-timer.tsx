@@ -50,7 +50,9 @@ export function FastingTimer({ activeFast }: FastingTimerProps) {
   const strokeWidth = 14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - progress);
+  // Ensure at least 1% is shown so the arc is always visible
+  const clampedProgress = Math.max(0.01, progress);
+  const dashOffset = circumference * (1 - clampedProgress);
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -68,9 +70,8 @@ export function FastingTimer({ activeFast }: FastingTimerProps) {
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="currentColor"
+            stroke="var(--border)"
             strokeWidth={strokeWidth}
-            className="text-muted/30"
           />
           {/* Progress arc */}
           <circle
@@ -78,12 +79,12 @@ export function FastingTimer({ activeFast }: FastingTimerProps) {
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="currentColor"
+            stroke="var(--primary)"
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={dashOffset}
-            className="text-primary transition-all duration-1000 ease-linear"
+            style={{ transition: "stroke-dashoffset 1s linear" }}
           />
         </svg>
 
@@ -132,9 +133,8 @@ function IdleTimer() {
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="currentColor"
+            stroke="var(--border)"
             strokeWidth={strokeWidth}
-            className="text-muted/30"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
