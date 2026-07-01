@@ -1,7 +1,14 @@
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  uuid,
+  pgEnum,
+} from "drizzle-orm/pg-core";
 
 // IMPORTANT! ID fields should ALWAYS use UUID types, EXCEPT the BetterAuth tables.
-
 
 export const user = pgTable(
   "user",
@@ -80,3 +87,66 @@ export const verification = pgTable("verification", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// Fasting feature
+// ---------------------------------------------------------------------------
+
+/**
+ * Supported fasting protocols.
+ * The value is stored as text so it is human-readable in the DB and easy to
+ * extend without a migration.
+ */
+export const fastingStatusEnum = pgEnum("fasting_status", [
+  "active",
+  "completed",
+  "cancelled",
+]);
+
+/**
+ * One row per fasting window.
+ *
+ * Design notes:
+ * - `started_at` is the authoritative start timestamp stored in the DB.
+ *   The frontend NEVER runs a background JS counter; it computes elapsed time
+ *   as `Date.now() - startedAt` on every render tick so the timer stays
+ *   accurate even after the phone screen wakes up from sleep.
+ * - `ended_at` is NULL while the fast is active and set when the user stops.
+ * - `goal_hours` is the planned duration in hours (e.g. 16 for "16:8").
+ */
+export const fastingSession = pgTable(
+  "fasting_session",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Human-readable protocol label, e.g. "16:8", "18:6", "24h", "OMAD" */
+    fastType: text("fast_type").notNull().default("16:8"),
+    /** Planned fasting duration in hours */
+    goalHours: text("goal_hours").notNull().default("16"),
+    /** UTC timestamp when the user pressed "Start Fast" */
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    /** UTC timestamp when the user pressed "End Fast" – NULL while active */
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    status: fastingStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("fasting_session_user_id_idx").on(table.userId),
+    index("fasting_session_status_idx").on(table.status),
+    index("fasting_session_started_at_idx").on(table.startedAt),
+  ]
+);
+
+// TypeScript types inferred from the schema
+export type FastingSession = typeof fastingSession.$inferSelect;
+export type NewFastingSession = typeof fastingSession.$inferInsert;
